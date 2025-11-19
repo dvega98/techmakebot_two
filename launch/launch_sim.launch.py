@@ -4,7 +4,7 @@ from ament_index_python.packages import get_package_share_directory
 
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 from launch_ros.actions import Node
@@ -22,7 +22,7 @@ def generate_launch_description():
     rsp = IncludeLaunchDescription(
                 PythonLaunchDescriptionSource([os.path.join(
                     get_package_share_directory(package_name),'launch','rsp.launch.py'
-                )]), launch_arguments={'use_sim_time': 'true'}.items()
+                )]), launch_arguments={'use_sim_time': 'false', 'use_ros2_control': 'false'}.items()
     )
 
     gazebo_params_file = os.path.join(get_package_share_directory(package_name),'config','gazebo_params.yaml')
@@ -43,19 +43,25 @@ def generate_launch_description():
     diff_drive_spawner = Node(
         package="controller_manager",
         executable="spawner.py",
-        arguments=["diff_cont"],
+        arguments=["diff_cont", '--controller-manager-timeout', '120'],
     )
 
     joint_broad_spawner = Node(
         package="controller_manager",
         executable="spawner.py",
-        arguments=["joint_broad"],
+        arguments=["joint_broad", '--controller-manager-timeout', '120'],
+    )
+
+    delayed_controllers = TimerAction(
+        period=10.0,
+        actions=[diff_drive_spawner, joint_broad_spawner]
     )
 
     return LaunchDescription([
         rsp,
         gazebo,
         spawn_entity,
-        diff_drive_spawner,
-        joint_broad_spawner
+        delayed_controllers
+        #diff_drive_spawner,
+        #joint_broad_spawner
     ])
